@@ -9,7 +9,9 @@ PROG="/usr/bin/goeap_proxy"
 boot()
 {
     config_load goeap_proxy
+    local wan
     config_get wan global wan
+    local router
     config_get router global router
     ubus -t 30 wait_for "network.interface.${wan}" "network.interface.${router}"
     rc_procd start_service
@@ -18,12 +20,15 @@ boot()
 start_service()
 {
     config_load goeap_proxy
+    local wan
     config_get wan global wan
+    local router
     config_get router global router
+    local ignore_logoff
     config_get_bool ignore_logoff global 'ignore_logoff' '0'
 
-    local if_wan=$(uci get "network.${wan}.ifname")
-    local if_router=$(uci get "network.${router}.ifname")
+    local if_wan=$(uci get "network.${wan}.device")
+    local if_router=$(uci get "network.${router}.device")
 
     procd_open_instance
     # attempt to restart every 30 seconds, the eap proxy for internet connectivity
@@ -31,8 +36,8 @@ start_service()
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_set_param command $PROG
-    procd_append_param command "${if_wan}"
-    procd_append_param command "${if_router}"
+    procd_append_param command -if-wan "${if_wan}"
+    procd_append_param command -if-router "${if_router}"
     if [ $ignore_logoff != "0" ]; then
         procd_append_param command -ignore-logoff
     fi
